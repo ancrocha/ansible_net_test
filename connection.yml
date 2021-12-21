@@ -1,0 +1,18 @@
+---
+- name: Test firewall connection
+  wait_for:
+    host: "{{ index.Destination }}"
+    port: "{{ index.Port }}"
+    state: started
+    delay: 0
+    timeout: 1
+    msg: "Fail to connect to {{ index.Destination }} on {{ index.Port }}"
+  ignore_errors: yes
+  register: connection
+  
+
+- local_action: lineinfile line="{{ index.Source }},{{ index.Destination }},{{ index.Protocol }},{{ index.Port }},{{ index.Action }},FAIL" dest={{ file_name }}
+  when: connection.failed == true
+
+- local_action: lineinfile line="{{ index.Source }},{{ index.Destination }},{{ index.Protocol }},{{ index.Port }},{{ index.Action }},SUCCESS" dest={{ file_name }}
+  when: connection.failed == false  

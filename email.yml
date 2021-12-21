@@ -1,0 +1,25 @@
+---
+- name: Sending an e-mail notification information report
+  mail:
+    host: localhost
+    port: 25
+    secure: never
+    subtype: html
+    to:
+      - Andre <andre.nevescorrearocha@telus.com>
+    from: Ansible <do-not-reply@telus.com>
+    subject: "Firewall testing results"
+    attach: "{{ file_name }}"
+    body: 
+          '
+          <html>
+          <body bgcolor="#F8F8F8" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" >
+
+          <h1 style="font-family:verdana;">Firewall test result</h1>
+          <p style="font-family:courier;">Please see attached file {{ file_name }}</h1>
+          </html>
+          </body>
+          '
+
+  delegate_to: localhost
+

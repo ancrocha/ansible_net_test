@@ -1,0 +1,70 @@
+#############################################################
+# Title: Ansible playbook for firewal testing.
+# Author: Andre Rocha 
+# Rights: Telus 
+# Date: 2021-Oct
+# Version: 1 
+##############################################################
+
+---
+- hosts: all
+  gather_facts: false
+  vars:
+    timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"
+  tasks:
+    - set_fact:
+        # file_path: "/home/t972990/firewall-testing-automation/"
+        file_path: "/var/tmp/reports/"
+
+    - set_fact:
+        file_name: "{{ file_path }}{{ timestamp }}_firewall_test_report.txt"
+
+    - name: Run phaser.py to get input from yoda_flow.csv
+      shell: "/usr/bin/python3 {{ file_path }}phaser.py"
+      delegate_to: 127.0.0.1
+      run_once: true
+
+    - name: Creating report file
+      local_action: file path={{ file_name }} state=absent
+      local_action: file path={{ file_name }} state=touch
+      run_once: true
+    
+    - name: Write index in output file
+      local_action: lineinfile line="Source,Destination,Protocol,Port,Action,Result" dest={{ file_name }}
+      run_once: true
+
+    - name: read csv file
+      read_csv:
+        path: "{{ file_path }}ansible_input.csv"
+      register: input
+      delegate_to: localhost
+      run_once: true
+
+    - name: Test firewall connection
+      include_tasks: connection.yaml
+      loop: "{{ input.list }}"
+      loop_control:
+        loop_var: index
+      when: index.Protocol == "tcp" and index.Source == ansible_ssh_host
+
+    - name: Ignored UDP tests
+      local_action: lineinfile line="{{ index.Source }},{{ index.Destination }},{{ index.Protocol }},{{ index.Port }},{{ index.Action }},NOT TESTED" dest={{ file_name }}
+      loop: "{{ input.list }}"
+      loop_control:
+        loop_var: index
+      when: index.Protocol == "udp"
+
+
+    - name: Email notification
+      block:
+        - name: primary server email notifications
+          include_tasks: email.yml
+      run_once: true
+
+    - name: Cleaning up files
+      local_action: file path={{ file_name }} state=absent
+      run_once: true
+
+    - name: Cleaning up files
+      local_action: file path={{ file_name }}ansible_input.csv state=absent
+      run_once: true
